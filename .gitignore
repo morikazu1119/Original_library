@@ -1,0 +1,3 @@
+.venv/
+kython/test_slack.ipynb
+kython/__pycache__/
