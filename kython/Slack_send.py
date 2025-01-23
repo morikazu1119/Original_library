@@ -1,5 +1,6 @@
 import requests
 import os
+import re
 from IPython.core.ultratb import AutoFormattedTB
 from IPython import get_ipython
 
@@ -11,27 +12,21 @@ class Slack:
         self.token = token
         self.channel = channel
         self.tb_handler = AutoFormattedTB(mode="Plain", color_scheme="Neutral", ostream=open(os.devnull, "w"))  # エラートレース取得用
-
-    def __call__(self, *args, **kwargs):
-        # エラーが発生した場合にSlackへ送信
-        ipython = get_ipython()
-        if ipython is not None:
-            exc_type, exc_value, tb = ipython._last_traceback
-            if exc_value is not None:
-                error_msg = self.tb_handler.text(*args)  # エラーメッセージを文字列として取得
-                self.send_msg(f"Error occurred in Jupyter Notebook:\n```\n{error_msg}\n```")
+        self.jupyter_preprocess()
 
     def send_msg(self, text):
+        """Slackにメッセージを送信"""
         headers = {"Authorization": "Bearer " + self.token}
         data = {
-            "token": self.token,
             "channel": self.channel,
             "text": text
         }
-        response = requests.post(chat_url, headers=headers, data=data)
-        #print(response.json())
+        response = requests.post(chat_url, headers=headers, json=data)
+        if not response.ok:
+            print(f"Slack通知エラー: {response.status_code}, {response.text}")
 
     def send_file(self, file_path):
+        """Slackにファイルを送信"""
         data = {
             "token": self.token,
             "channels": self.channel,
@@ -40,4 +35,32 @@ class Slack:
         }
         files = {"file": open(file_path, "rb")}
         response = requests.post(file_url, data=data, files=files)
-        #print(response.json())
+        if not response.ok:
+            print(f"Slack通知エラー: {response.status_code}, {response.text}")
+
+    def jupyter_preprocess(self):
+        """Jupyter Notebook の最初に実行する関数."""
+        itb = AutoFormattedTB(mode='Plain', tb_offset=1)
+
+        def custom_exc(shell, etype, evalue, tb, tb_offset=None):
+            # 例外が発生した場合の処理
+            shell.showtraceback((etype, evalue, tb), tb_offset=tb_offset)
+
+            # トレースバックのフォーマット
+            stb = itb.structured_traceback(etype, evalue, tb)
+            sstb = itb.stb2text(stb)
+
+            # ANSIカラーコードを正規表現で削除
+            readable_traceback = re.sub(r'\x1b\[[0-9;]*m', '', ''.join(sstb))
+
+            # エラー内容を整理してSlackに通知
+            formatted_traceback = f"Exception: {etype}\nMessage: {evalue}\nTraceback:\n{readable_traceback}"
+
+            # Slack通知
+            self.send_msg(f"ERROR: 例外が発生しました。\n```\n{formatted_traceback}\n```")
+
+            return sstb
+
+        # カスタムエラーハンドラーを設定
+        get_ipython().set_custom_exc((Exception,), custom_exc)
+
