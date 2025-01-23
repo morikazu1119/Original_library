@@ -1,16 +1,24 @@
 # Original_library (Python)
 
-This repository contains library which I made.
+## Contain
 
-Maybe this library makes youslef useful.
+kython
+- Slack_send.py
+  - send msg, send file and send error log
 
-But, to be careful, because library has a security vulnerability. 
+## Sample Code
+```
+import sys
+sys.path.append("{your parent dir}")
+from kython import Slack
 
-# Contain
+token="{your token}"
+channel="{channel name}"
 
-- send a message to slack. (if your problem has error in jupyter notebook and so on.)
-- send a file to slack.
+slack = Slack(token=token, channel=channel)
+slack.send_msg("Hello, world!")
+```
 
-# Coming soon
+## Coming soon
 
 - send a message to Line (if your problem has error in jupyter notebook and so on.)
