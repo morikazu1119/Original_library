@@ -33,10 +33,12 @@ class Slack:
             "filename": os.path.basename(file_path),
             "title": os.path.basename(file_path)
         }
-        files = {"file": open(file_path, "rb")}
-        response = requests.post(file_url, data=data, files=files)
-        if not response.ok:
-            print(f"Slack通知エラー: {response.status_code}, {response.text}")
+        with open(file_path, "rb") as f:
+            files = {"file": f}
+            response = requests.post(file_url, data=data, files=files)
+            if not response.ok:
+                print(f"Slack通知エラー: {response.status_code}, {response.text}")
+
 
     def jupyter_preprocess(self):
         """Jupyter Notebook の最初に実行する関数."""
